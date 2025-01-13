@@ -4,11 +4,11 @@ close all
 %% Script info:
 %%%% Compare stations usages (millions of people in 2016) with respect the
 %%%% rankings obtained by different centrality methods
-%%%% We use the data already made with create_rankings_london and stored in
+%%%% We use the data already computed and stored in
 %%%% the file rankings_on_london.mat
 % addpath '../functions'
 load('rankings_on_london.mat');
-load('London_Multiplex_Transport/Tube_usage_data/tube_usage_data.mat');
+load('tube_usage_data.mat');
 
 % fA = @(A,x)  (A*((2.*x-1).^2)).^(1/(2.001));
 fA = @(A,x)  (A*abs(x-.5)).^.9;
