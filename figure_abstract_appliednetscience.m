@@ -1,0 +1,172 @@
+
+clear all
+close all
+%% Script info:
+%%%% Compare stations usages (millions of people in 2016) with respect the
+%%%% rankings obtained by different centrality methods
+%%%% We use the data already made with create_rankings_london and stored in
+%%%% the file rankings_on_london.mat
+% addpath '../functions'
+load('rankings_on_london.mat');
+load('London_Multiplex_Transport/Tube_usage_data/tube_usage_data.mat');
+
+% fA = @(A,x)  (A*((2.*x-1).^2)).^(1/(2.001));
+fA = @(A,x)  (A*abs(x-.5)).^.9;
+fAinv =  @(A,x) (A*(1./x)).^.9;
+fAlin = @(A,x) (A*x).^.9;
+fAmax = @(A,x) (A*max(2*x-1,1./(100.*x))).^.9;
+
+S = Problem.S; Aoriginal = S(:,:,1); 
+d = sum(Aoriginal); 
+[n,m] = size(Aoriginal);
+idtube = 1:n; idtube = idtube(d~=0);
+% A = Aoriginal(idtube,idtube);
+A = Problem.A; A = A(idtube,idtube);
+[n,m] = size(A);
+
+
+x0 = ones(n,1); x0 = x0./norm(x0,1);
+for i = 1 : 1000
+    u = fA(A,x0); x = u./norm(u,1);
+    if norm(x0-x)<1e-9
+        break
+    end
+    x0 = x;
+end
+i
+c1 = x;
+
+x0 = ones(n,1); x0 = x0./norm(x0,1);
+for i = 1 : 1000
+    u = fAinv(A,x0); x = u./norm(u,1);
+    if norm(x0-x)<1e-9
+        break
+    end
+    x0 = x;
+end
+i
+c2 = x;
+
+
+
+x0 = ones(n,1); x0 = x0./norm(x0,1);
+for i = 1 : 1000
+    u = fAmax(A,x0); x = u./norm(u,1);
+    if norm(x0-x)<1e-9
+        break
+    end
+    x0 = x;
+end
+i
+c3 = x;
+
+
+x0 = ones(n,1); x0 = x0./norm(x0,1);
+for i = 1 : 1000
+    u = fAlin(A,x0); x = u./norm(u,1);
+    if norm(x0-x)<1e-9
+        break
+    end
+    x0 = x;
+end
+i
+c4 = x;
+
+
+
+[V,D] = eigs(A,2,'lm');
+c5 = abs(V(:,1));
+
+
+[~, id1] = sort(c1, 'descend');
+[~, id2] = sort(c2, 'descend');
+[~, id3] = sort(c3, 'descend');
+[~, id4] = sort(c4, 'descend');
+[~, id5] = sort(c5, 'descend');
+
+
+
+years = [2017 2016 2015 2014 2013 2012 2011 2010 2009 2008];
+
+year = 2016;
+
+usagedata = table2array(TABLE(:,[1,find(years==year)+2]));
+idusage = usagedata(:,1);
+usage = usagedata(:,2);
+names = table2cell(TABLE(:,2));
+[usagesorted,idtruth] = sort(usage,'descend');
+
+no = n; 
+
+cum1 = 0; cum2 = 0; cum3 = 0; cum4 =0;  cum5 = 0;
+titles = {'abs','inverse', 'max', 'Ax', 'eig',  'truth', 'usage', 'name'};
+rows = {};
+for j = 1 : no
+    rows = [ rows; {idtube(id1(j))-1, ...
+                idtube(id2(j))-1, ...
+                idtube(id3(j))-1, ...
+                idtube(id4(j))-1, ...
+                idtube(id5(j))-1, ...
+                idusage(idtruth(j)), ...
+                usage(idtruth(j)), ...
+                names{idtruth(j)} }] ;
+   cum1 = [cum1 cum1(end) + usage(find(idusage==idtube(id1(j))-1))];
+   cum2 = [cum2 cum2(end) + usage(find(idusage==idtube(id2(j))-1))];
+   cum3 = [cum3 cum3(end) + usage(find(idusage==idtube(id3(j))-1))];
+   cum4 = [cum4 cum4(end) + usage(find(idusage==idtube(id4(j))-1))];
+   cum5 = [cum5 cum5(end) + usage(find(idusage==idtube(id5(j))-1))];
+end
+
+%%% Print out results
+r = 20;
+
+cell2table(rows(1:r,:), 'variablenames', titles)
+
+
+figure, 
+hold on
+plot(isim_new([rows{1:r,1}]', [rows{1:r,6}]'),'linewidth',4);
+plot(isim_new([rows{1:r,2}]', [rows{1:r,6}]'),'linewidth',2);
+plot(isim_new([rows{1:r,3}]', [rows{1:r,6}]'),'o', 'linewidth', 2,  'markersize', 15);
+plot(isim_new([rows{1:r,4}]', [rows{1:r,6}]'),'linewidth',2);
+plot(isim_new([rows{1:r,5}]', [rows{1:r,6}]'),'linewidth',2);
+setplotstuff(1,1)
+legend({'$f_1$', '$f_2$', '$f_3$', '$f_4$', 'eig'},...
+    'fontsize', 15, 'location','northeast','interpreter','latex');
+xlabel('Top $k$ stations', 'interpreter', 'latex');
+ylabel('Intersection similarity', 'interpreter', 'latex');
+
+% keyboard
+
+figure, hold on, t = 20;
+plot(1:t,cum1(2:t+1), 'linewidth', 4);
+plot(1:t,cum2(2:t+1), 'linewidth', 2);
+plot(1:t,cum3(2:t+1),'o', 'linewidth', 2,  'markersize', 15);
+plot(1:t,cum4(2:t+1), 'linewidth', 2);
+plot(1:t,cum5(2:t+1),'linewidth',2);
+% plot(0:t-1,[0;cumsum(usagesorted(1:t-1))], 'linewidth', 2)
+legend({'$f_1$', '$f_2$', '$f_3$', '$f_4$', 'eig'},...
+    'fontsize', 15, 'location','northwest','interpreter','latex');
+hold off
+setplotstuff(1,1)
+% title(year)
+xlabel('Top $k$ stations', 'interpreter', 'latex');
+ylabel('Million of passengers', 'interpreter', 'latex');
+xlim([1 , t])
+ylim([1 , 850])
+% xticklabels([1:t])
+%  usageNSM = usage(id2,[1 5]) + [1 0];
+%  usageNSM = [usageNSM rank(usageNSM(:,2))];
+%  topNSM = [irNSM(1:t) cNSM(irNSM(1:t)) rank(cNSM(irNSM(1:t)))];
+%  [~,id3] = sort(topNSM(:,1)); topNSM = topNSM(id3,:);
+%
+% figure,
+% spy(A(id1,id1))
+%  
+saveplots = false;
+if saveplots
+    filename = 'ISIM_2016';
+%     savefig(filename);
+    set(gcf, 'PaperPositionMode', 'auto');
+    print(filename,'-depsc2');
+end
